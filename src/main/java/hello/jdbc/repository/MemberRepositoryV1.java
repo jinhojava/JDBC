@@ -4,21 +4,29 @@ package hello.jdbc.repository;
 import hello.jdbc.connection.DBConnectionUtil;
 import hello.jdbc.domain.Member;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.support.JdbcUtils;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.NoSuchElementException;
 
 /*
-* JDBC -DriverManger사용  가장 예전 방식
+* JDBC -DataSource 사용, jdbcUtils 사용
 * */
 
 @Slf4j
-public class MemberRepositoryV0 {
+public class MemberRepositoryV1 {
+
+    private final DataSource dataSource;
+
+    public MemberRepositoryV1(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public Member save(Member member) throws SQLException {
         String sql = "insert into member(member_id, money) values(?,?)";
 
-        Connection con = null;//연결객체
+        Connection con = null; //연결객체
         PreparedStatement pstmt = null; //이것을 사용해 데이터베이스 쿼리날림
 
         try {
@@ -111,33 +119,15 @@ public class MemberRepositoryV0 {
     //Statement는 sql을 그대로 넣는거고  prepareStatement는 파라미터 바인딩이 가능 기능더많음
     //prepareStatement는 Statement를 상속받음
     //닫는 메소드, 생성과 반대로 역순으로
-    private void close(Connection con, Statement stmt, ResultSet rs){
-        if(rs!=null){
-            try{
-                rs.close();}
-            catch (SQLException e){
-                log.info("error",e);
-            }
-        }
-        if(stmt!=null){
-            try{
-            stmt.close();}
-            catch (SQLException e){
-                log.info("error",e);
-            }
-        }
-        if(con!=null){
-            try {
-                con.close();
-            } catch (SQLException e) {
-                log.info("error",e);
-            }//리소스종료는 역순으로
-        }
+    private void close(Connection con, Statement stmt, ResultSet rs) {
 
-
+        JdbcUtils.closeResultSet(rs);
+        JdbcUtils.closeStatement(stmt);
+        JdbcUtils.closeConnection(con);
     }
-
-    private Connection getConnection() {
-        return DBConnectionUtil.getConnection();
+    private Connection getConnection() throws SQLException {
+        Connection con = dataSource.getConnection();
+        log.info("get connection={}, class={}", con, con.getClass());
+        return con;
     }
 }
